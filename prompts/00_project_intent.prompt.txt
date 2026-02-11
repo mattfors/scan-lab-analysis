@@ -1,0 +1,137 @@
+Project intent
+
+We are building a system that analyzes barcode scan timing data to classify scanning behavior as compliant or non-compliant and to detect anomalous timing patterns within compliant behavior.
+
+The system uses only scan timing patterns and does not evaluate barcode correctness or workflow logic.
+
+---
+
+What the data represents
+
+The input consists of barcode scan events grouped into experiments.
+
+Each experiment represents one session performed by a user. Scans within an experiment are recorded sequentially with timestamps.
+
+Each scan record includes:
+
+• experiment identifier grouping scans into one session
+• user performing the scans
+• intended scanning style for the experiment
+• intended grouping size for compliant sessions
+• scan order within the session
+• timestamp of the scan
+• time difference from the previous scan
+• elapsed time since the first scan
+• barcode scanned
+
+Each experiment is treated as one behavioral sample.
+
+---
+
+Definitions
+
+Experiment
+A recorded session of scans representing one behavioral example.
+
+Scan
+A single barcode read event recorded with a timestamp.
+
+Delta time
+Time difference between consecutive scans.
+
+Elapsed time
+Time since the first scan in the experiment.
+
+Compliant scanning behavior
+The user repeatedly performs a physical action sequence:
+
+pick up one or more items → perform one or more scans → set items down → repeat.
+
+This produces clusters of scans separated by pauses caused by physical movement.
+
+Non-compliant scanning behavior
+The user holds a single item and repeatedly scans the same barcode instance without performing the intended physical action between scans, producing long runs of evenly spaced scans.
+
+Target cluster size
+For compliant experiments, this is the instructed number of items handled before scanning. It represents intended behavior rather than measured behavior.
+
+Burst or cluster
+A sequence of scans occurring close together in time.
+
+Reset gap
+A longer pause between clusters representing time spent performing the physical action before scanning again.
+
+---
+
+Core assumption
+
+The only reliable signal available is scan timing.
+
+Behavior must therefore be inferred from timing structure rather than scan speed alone.
+
+---
+
+Behavior hypothesis
+
+Compliant scanning typically produces:
+
+• clusters of scans with relatively consistent sizes
+• patterned but naturally variable timing within clusters
+• larger pauses between clusters corresponding to physical reset actions
+• human variability in timing and grouping
+
+Non-compliant scanning is hypothesized to produce:
+
+• faster average scan rates
+• reduced variability in timing between scans
+• long uninterrupted runs of scans
+• irregular or absent clustering structure
+• weaker separation between clusters and resets
+
+Thus, compliant behavior tends to show structured timing patterns, while non-compliant behavior tends toward uniform or structure-reduced timing.
+
+---
+
+Analysis goals
+
+For each experiment:
+
+• classify scanning behavior as compliant or non-compliant
+• detect anomalous timing patterns even within compliant behavior
+• generate a behavioral signature describing scan timing structure
+
+Across many experiments:
+
+• support machine learning classification
+• produce probability-based behavior scoring
+• enable comparison across users and sessions
+• scale from inspection of individual experiments to large datasets
+
+---
+
+System approach
+
+For each experiment:
+
+1. Compute timing differences between scans.
+2. Detect clusters and reset gaps from timing structure.
+3. Extract timing and structural features.
+4. Represent each experiment as a behavioral feature vector.
+
+Across many experiments:
+
+5. Use clustering or supervised machine learning to group or classify behavior patterns and detect anomalies.
+
+---
+
+Non-goals
+
+The system does not:
+
+• validate barcode correctness
+• enforce workflow rules
+• analyze barcode contents
+• predict future scans
+• require manual labeling of clusters
+
+The focus is strictly timing-based behavioral classification.

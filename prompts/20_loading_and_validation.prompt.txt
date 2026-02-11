@@ -1,0 +1,132 @@
+File: 20_loading_and_validation.prompt.txt
+
+Goal
+
+Implement the raw data ingestion step for the scan timing analysis repository.
+
+This step loads all raw CSV exports produced by the scan capture tool, validates them strictly against the repository data schema, and writes a single canonical processed dataset to Parquet for downstream analysis.
+
+This repository operates in strict mode: invalid data must cause ingestion to fail immediately.
+
+Scope
+
+Generate Python modules and a callable entry point that:
+
+1. Loads all CSV files from data/raw/.
+2. Enforces required columns and data types.
+3. Validates experiment-level invariants and timing math.
+4. Writes one consolidated processed scan dataset to data/processed/scans.parquet.
+
+Data location conventions
+
+Raw input:
+- data/raw/*.csv
+
+Processed output:
+- data/processed/scans.parquet
+
+Input format expectations
+
+Raw CSV files contain a header row with exactly these columns:
+
+experimentId,userName,targetScanStyle,targetClusterSize,scanIndex,timestampMs,deltaMs,elapsedMs,barcode
+
+The loader must treat empty strings as missing values for nullable columns.
+
+Schema rules (must enforce)
+
+Use the repository schema and definitions:
+
+- targetScanStyle must be one of: compliant, non_compliant
+- targetClusterSize must be present and > 1 if targetScanStyle is compliant
+- targetClusterSize may be null if targetScanStyle is non_compliant
+- deltaMs may be null only for scanIndex == 0
+- elapsedMs for scanIndex == 0 must equal 0
+- scanIndex must be integer, starts at 0, increments by 1 with no gaps per experiment
+- timestampMs must be integer and strictly increasing per experiment
+- elapsedMs must be integer and strictly increasing per experiment
+- barcode must be present and constant per experiment
+- userName must be constant per experiment
+- targetScanStyle must be constant per experiment
+
+Timing consistency rules (must enforce)
+
+Within each experiment:
+
+- For scanIndex > 0:
+  deltaMs must equal timestampMs[i] - timestampMs[i-1]
+
+- For all scanIndex:
+  elapsedMs must equal timestampMs[i] - timestampMs[0]
+
+If any rule fails: raise an exception and abort ingestion.
+
+Loading behavior
+
+- Read every CSV file in data/raw/.
+- Concatenate all rows into one dataframe.
+- Do not deduplicate rows.
+- Treat each experimentId independently.
+- If the same experimentId appears in multiple CSVs, validation must still pass for the combined set (contiguous scanIndex, constant metadata, consistent timing). If it does not, ingestion must fail.
+
+Ordering
+
+Before validating per experiment:
+
+- sort by experimentId, then scanIndex
+- validate that scanIndex ordering is correct and that timestamps are strictly increasing
+- do not repair or reindex; fail if invariants are broken
+
+Output requirements
+
+Write one canonical processed dataframe to Parquet:
+
+- output file: data/processed/scans.parquet
+- include the same columns as input
+- enforce correct dtypes (integers for ms fields; nullable types where allowed)
+- represent missing deltaMs and missing targetClusterSize as nulls (pandas NA)
+- preserve integer millisecond values (no unit conversion)
+
+Public API
+
+Provide importable functions (module names are suggestions; adjust as appropriate):
+
+analysis/load.py
+- load_all_raw_csv(folder_path: str = "data/raw") -> pandas.DataFrame
+
+analysis/validate.py
+- validate_scans_strict(df: pandas.DataFrame) -> None  (raises on failure)
+
+analysis/io.py (or analysis/save.py)
+- write_scans_parquet(df: pandas.DataFrame, path: str = "data/processed/scans.parquet") -> None
+
+Provide a simple entry point:
+
+- python -m analysis.ingest
+
+Behavior of analysis.ingest:
+
+- loads all raw CSVs
+- validates strictly
+- writes data/processed/scans.parquet
+- prints a small summary (row count, experiment count) on success
+
+Non-goals
+
+- No “best effort” repairs or cleaning beyond type coercion
+- No feature extraction
+- No ML
+- No plotting
+
+Tests (required)
+
+Add unit tests that:
+
+- pass for a minimal valid experiment
+- fail when scanIndex has gaps
+- fail when timestamps are non-monotonic
+- fail when deltaMs math is inconsistent
+- fail when elapsedMs math is inconsistent
+- fail when compliant targetClusterSize is missing or <= 1
+- pass when non_compliant targetClusterSize is null
+- fail when metadata (userName, barcode, targetScanStyle) changes within an experiment

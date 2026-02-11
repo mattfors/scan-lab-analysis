@@ -1,0 +1,144 @@
+File: 10_data_schema.prompt.txt
+
+Data schema intent
+
+The dataset represents barcode scan events grouped into experiments. Each row corresponds to exactly one scan event.
+
+An experiment groups scans belonging to one session and represents one behavioral sample for analysis.
+
+Analysis operates at two levels:
+
+• scan level (individual scan timing)
+• experiment level (behavior across a session)
+
+---
+
+Row meaning
+
+Each row represents one scan event recorded at a specific time within an experiment.
+
+Rows are ordered by scanIndex within each experiment.
+
+---
+
+Experiment meaning
+
+An experiment is defined by experimentId and represents one session of scanning behavior.
+
+All scans belonging to the same experiment must share:
+
+• the same user
+• the same declared scan style
+• the same barcode
+• the same intended cluster size when applicable
+
+Each experiment is treated as one behavioral unit for classification.
+
+---
+
+Required columns
+
+experimentId
+Unique identifier grouping scans belonging to the same experiment.
+
+userName
+Identifier of the user performing scans.
+
+targetScanStyle
+Declared behavior for the experiment. Allowed values:
+
+• compliant
+• non_compliant
+
+targetClusterSize
+Intended grouping size for compliant experiments. Must be greater than 1 when scan style is compliant. May be null when style is non_compliant.
+
+scanIndex
+Zero-based index indicating scan order within an experiment.
+
+timestampMs
+Epoch time in milliseconds when scan occurred.
+
+deltaMs
+Time difference from previous scan in the experiment. First scan contains null.
+
+elapsedMs
+Time since first scan in the experiment. First scan must equal 0.
+
+barcode
+Barcode value scanned.
+
+---
+
+Column constraints and invariants
+
+Within each experiment:
+
+• scanIndex starts at 0
+• scanIndex increments by exactly 1 with no gaps
+• timestampMs strictly increases
+• elapsedMs strictly increases
+• deltaMs equals timestamp difference between scans
+• userName is constant
+• targetScanStyle is constant
+• barcode is constant
+
+Any violation indicates invalid data.
+
+---
+
+Allowed missing values
+
+deltaMs may be null only for the first scan.
+
+targetClusterSize may be null only when targetScanStyle equals non_compliant.
+
+All other fields must be present.
+
+---
+
+Data types
+
+experimentId → string or UUID
+userName → string
+targetScanStyle → categorical string
+targetClusterSize → integer or null
+scanIndex → integer
+timestampMs → integer
+deltaMs → integer or null
+elapsedMs → integer
+barcode → string
+
+All timing values are measured in milliseconds.
+
+---
+
+Sorting expectations
+
+Data must be sorted by experimentId and scanIndex before analysis.
+
+Correct ordering is required for timing calculations.
+
+---
+
+Validation behavior
+
+Schema validation must operate in strict mode.
+
+If any invariant or required constraint is violated, processing must fail immediately rather than attempting correction or recovery.
+
+This repository assumes capture tools produce correct data, and invalid data indicates upstream defects.
+
+---
+
+Future extensions
+
+Additional fields may later include:
+
+• experiment metadata
+• device identifiers
+• derived timing classifications
+• cluster or burst identifiers
+• feature extraction outputs
+
+Future fields must not change the meaning of existing columns.

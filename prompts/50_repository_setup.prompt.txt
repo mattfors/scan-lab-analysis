@@ -1,0 +1,228 @@
+File: 05_repository_setup.prompt.txt
+
+Goal
+
+Set up a Python data analysis repository with modern tooling for reproducible research.
+
+The repository must use Poetry for dependency management, include a dev container for consistent environments, and provide Jupyter Lab for interactive analysis.
+
+All setup must be declarative and reproducible.
+
+---
+
+Tooling stack
+
+Poetry
+Dependency manager using pyproject.toml as the single source of truth for all dependencies and project configuration.
+
+Dev container
+Containerized development environment that installs all dependencies automatically on creation.
+
+Jupyter Lab
+Interactive notebook environment for exploratory analysis and visualization.
+
+Python 3.12
+Target Python version.
+
+---
+
+Required project structure
+
+data/
+  raw/           — Raw CSV files from scan capture tool
+  interim/       — Intermediate processing artifacts
+  processed/     — Final processed datasets (Parquet)
+
+notebooks/       — Jupyter notebooks for analysis
+
+prompts/         — Analysis prompts (already exists)
+
+figures/         — Generated visualizations
+
+reports/         — Analysis reports and summaries
+
+src/             — Python modules for data processing
+
+tests/           — Test suite for validation logic
+
+---
+
+pyproject.toml requirements
+
+Project configuration:
+
+• name: scan-lab-analysis
+• python constraint: ^3.12
+• description of project purpose
+
+Core dependencies with compatible version constraints:
+
+• pandas (>=2.0)
+• numpy (>=1.24)
+• matplotlib (>=3.7)
+• seaborn (>=0.13)
+• scipy (>=1.11)
+• plotly (>=5.18)
+• pyarrow (>=14.0) — for Parquet support
+• jupyter (>=1.0)
+• jupyterlab (>=4.0)
+• ipykernel (>=6.27)
+
+Dev dependencies:
+
+• pytest (>=7.4)
+• pytest-cov (>=4.1)
+• ruff (>=0.1) — linting and formatting
+
+Poetry configuration:
+
+• virtualenvs.in-project = true (creates .venv in project root)
+
+---
+
+.devcontainer/devcontainer.json requirements
+
+Base image:
+
+• mcr.microsoft.com/devcontainers/python:3.12
+
+Features to install:
+
+• Poetry via pip in container
+
+Post-create commands:
+
+• poetry install --no-interaction
+
+Port forwarding:
+
+• 8888 for Jupyter Lab
+
+VS Code extensions:
+
+• ms-python.python
+• ms-python.vscode-pylance
+• ms-toolsai.jupyter
+
+---
+
+.gitignore requirements
+
+Python artifacts:
+
+• __pycache__/
+• *.py[cod]
+• *.so
+• .Python
+
+Virtual environments:
+
+• .venv/
+• venv/
+• ENV/
+
+Jupyter:
+
+• .ipynb_checkpoints/
+• */.ipynb_checkpoints/*
+
+Data outputs (preserve structure, ignore files):
+
+• data/interim/*
+• data/processed/*
+• !data/interim/.gitkeep
+• !data/processed/.gitkeep
+
+Generated outputs:
+
+• figures/*.png
+• figures/*.pdf
+• reports/*.html
+
+IDE:
+
+• .vscode/*
+• !.vscode/settings.json
+• !.vscode/tasks.json
+
+---
+
+README.md requirements
+
+Sections:
+
+1. Project title and one-sentence description
+2. Purpose — what this repository analyzes
+3. Setup instructions using Poetry and dev container
+4. Project structure — brief directory explanations
+5. Usage — how to run analysis notebooks
+6. Data schema reference — link to prompts/10_data_schema.prompt.txt
+
+Setup instructions must include:
+
+• Opening in dev container (auto-installs dependencies)
+• Manual Poetry setup if not using container
+• Starting Jupyter Lab with poetry run jupyter lab
+
+---
+
+Additional standard files
+
+data/interim/.gitkeep
+Empty file to preserve directory in git.
+
+data/processed/.gitkeep
+Empty file to preserve directory in git.
+
+src/__init__.py
+Empty file marking package root.
+
+tests/__init__.py
+Empty file marking test package.
+
+---
+
+Entry point commands
+
+Users should be able to run:
+
+poetry install
+Install all dependencies from lock file.
+
+poetry run jupyter lab
+Start Jupyter Lab server in notebooks/ directory.
+
+poetry add <package>
+Add new dependency.
+
+poetry run pytest
+Run test suite.
+
+poetry shell
+Activate virtual environment shell.
+
+---
+
+Constraints
+
+• No conda, pip, or requirements.txt — Poetry only
+• All dependencies declared in pyproject.toml with version constraints
+• Dev container must install dependencies automatically
+• Project must be reproducible on any system with Docker and VS Code
+• Python 3.12 required
+• No generated files committed (data outputs, figures, pycache)
+
+---
+
+Success criteria
+
+After setup, a developer should be able to:
+
+1. Clone repository
+2. Open in VS Code with dev container
+3. Container builds and installs dependencies automatically
+4. Run poetry run jupyter lab
+5. Create notebooks that import pandas, numpy, etc.
+6. Run poetry run pytest and see tests execute
+
+All without manual dependency installation or environment configuration.

@@ -1,0 +1,45 @@
+{
+	"name": "Scan Lab Analysis",
+	"image": "mcr.microsoft.com/devcontainers/python:3.12",
+	
+	"features": {
+		"ghcr.io/devcontainers/features/python:1": {
+			"version": "3.12"
+		}
+	},
+
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"ms-toolsai.jupyter",
+				"charliermarsh.ruff"
+			],
+			"settings": {
+				"python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python",
+				"python.terminal.activateEnvironment": true,
+				"[python]": {
+					"editor.defaultFormatter": "charliermarsh.ruff",
+					"editor.formatOnSave": true,
+					"editor.codeActionsOnSave": {
+						"source.organizeImports": "explicit"
+					}
+				}
+			}
+		}
+	},
+
+	"postCreateCommand": "pip install poetry && poetry install --no-interaction",
+
+	"forwardPorts": [8888],
+
+	"portsAttributes": {
+		"8888": {
+			"label": "Jupyter Lab",
+			"onAutoForward": "notify"
+		}
+	},
+
+	"remoteUser": "vscode"
+}
