@@ -1,4 +1,4 @@
-File: 05_repository_setup.prompt.txt
+File: 30_repository_setup.prompt.txt
 
 Goal
 

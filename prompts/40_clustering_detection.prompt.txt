@@ -1,0 +1,207 @@
+File: 40_clustering_detection.prompt.txt
+
+Goal
+
+Develop and validate methods to accurately detect scan clusters and determine cluster sizes from timing data.
+
+A cluster is a burst of scans performed sequentially with short intervals, separated from other clusters by longer pauses (reset gaps).
+
+The challenge is to identify cluster boundaries in an unsupervised manner and validate that detected clustering aligns with intended behavior.
+
+---
+
+Problem Definition
+
+Given a sequence of scans within an experiment, identified by deltaMs (time between consecutive scans):
+
+1. Some scans are performed in rapid succession (cluster interior) - small deltaMs
+2. Some scans are separated by longer pauses (cluster boundaries) - large deltaMs
+3. The pause represents physical reset time (user setting down items, picking up new ones, etc.)
+4. Cluster size is the intended number of items handled per cluster (targetClusterSize)
+
+Constraints:
+
+• Timing is the only reliable signal (no barcode or workflow information)
+• Human variability means cluster sizes may not be perfectly uniform even when compliant
+• Pauses may vary in duration
+• Non-compliant behavior may show no clear clustering structure
+
+---
+
+Clustering Detection Approaches
+
+The system should explore and compare multiple methods:
+
+### Approach 1: Threshold-based Pause Detection
+
+Detect pauses using a fixed or adaptive threshold on deltaMs.
+
+Logic:
+- Define a pause threshold (e.g., 500ms, 1000ms, or adaptive based on quantiles)
+- Mark any deltaMs exceeding threshold as a reset boundary
+- Scans between boundaries form a cluster
+
+Advantages:
+- Simple, interpretable, fast
+- Works well if pauses are clearly separated from within-cluster timing
+
+Disadvantages:
+- Requires tuning threshold per experiment or dataset
+- Fails if pause and within-cluster timing distributions overlap
+
+### Approach 2: Change Point Detection
+
+Use statistical change point detection to identify boundaries.
+
+Methods to explore:
+- PELT (Pruned Exact Linear Time) - detects shifts in mean/variance
+- Kernel change point detection
+- Hidden Markov Models with two states (cluster, pause)
+
+Advantages:
+- Adaptive to each experiment's timing structure
+- Identifies both location and magnitude of changes
+- No fixed threshold required
+
+Disadvantages:
+- Computationally more expensive
+- Requires selecting detection sensitivity
+
+### Approach 3: Unsupervised Clustering on Timing Features
+
+Cluster deltaMs values themselves to separate "fast" scans from "pause" scans.
+
+Methods to explore:
+- K-means clustering (k=2: intra-cluster vs inter-cluster timing)
+- Gaussian Mixture Models (2 components)
+- DBSCAN on deltaMs
+- Classify each deltaMs as cluster-interior or pause-boundary, then group consecutive cluster-interior scans
+
+Advantages:
+- Learns timing distribution patterns from data
+- Can discover natural separation in deltaMs
+- Works without manual threshold setting
+
+Disadvantages:
+- Requires assumption of 2 distinct timing modes
+- May struggle if distribution is continuous (non-compliant behavior)
+
+### Approach 4: Machine Learning on Sequence Features
+
+Train a model to classify each scan as cluster-interior or boundary.
+
+Features per scan:
+- deltaMs (time to previous scan)
+- rolling statistics (mean, std of previous N deltas)
+- position in experiment (relative scan index)
+- elapsed time
+- rate of change in deltaMs
+
+Model types:
+- Logistic regression with timing features
+- Random Forest for feature importance
+- LSTM/RNN to capture sequence context
+- Isolation Forest for anomaly detection on timing
+
+Training approach:
+- Unsupervised: Use clustering results from other methods as weak labels
+- Supervised (if labels available): Use targetClusterSize to validate/train
+
+Advantages:
+- Can learn complex timing patterns
+- Provides confidence scores for predictions
+- Adaptable to different experiment styles
+
+Disadvantages:
+- Requires labeled data for supervision or validation
+- Risk of overfitting to specific dataset
+- Less interpretable than threshold-based methods
+
+---
+
+Validation Approach
+
+To evaluate clustering detection accuracy:
+
+### Expected Alignment Metrics
+
+1. Cluster Size Agreement
+   - Detected cluster sizes should align with targetClusterSize
+   - Metric: Compare detected cluster sizes with targetClusterSize
+   - Expected: Mean detected size ≈ targetClusterSize (within 1-2 scans due to human variability)
+
+2. Consistency Within Expected Behavior
+   - For compliant experiments: cluster sizes should be relatively consistent
+   - For non-compliant experiments: no clear clustering structure should be detected
+
+3. Pause Structure
+   - Reset gaps should be significantly larger than within-cluster intervals
+   - Metric: Gap-to-interior ratio (mean pause / mean within-cluster deltaMs)
+   - Expected: Ratio >> 1 for compliant behavior
+
+4. Experiment-Level Statistics
+   - Total scans = sum of detected cluster sizes + boundary scans
+   - Number of detected clusters should match logical experiment structure
+
+### Comparative Analysis
+
+Compare detection methods:
+- Accuracy of cluster size detection vs targetClusterSize
+- Consistency of cluster boundaries across similar experiments
+- Robustness to outliers and timing variations
+- Computational cost and execution time
+- Interpretability and debuggability
+
+---
+
+Output Artifacts
+
+The exploration should produce:
+
+1. Cluster Detection Visualizations
+   - Timeline plots with detected cluster boundaries marked
+   - Distribution of deltaMs with cluster/pause regions highlighted
+   - Detected cluster sizes vs targetClusterSize comparison
+
+2. Method Comparison Report
+   - Accuracy metrics for each approach
+   - Sensitivity analysis (how results change with parameters)
+   - Recommended method for this dataset
+
+3. Clustering Features Dataset
+   - For each scan: detected cluster ID, cluster position, is_boundary flag
+   - Confidence scores if applicable
+   - Residuals from expected cluster size
+
+4. Threshold/Parameter Recommendations
+   - Optimal pause threshold (if threshold-based)
+   - Sensitivity parameters for change point detection
+   - Feature importance if using ML
+
+5. Edge Case Analysis
+   - Experiments where clustering cannot be clearly detected
+   - Impact of outlier scans on clustering
+   - Behavior in non-compliant experiments
+
+---
+
+Implementation Scope
+
+Create exploratory notebook and/or modules that:
+
+1. Load processed scan data
+2. Implement multiple clustering detection methods (at minimum: threshold-based, change point, and one ML approach)
+3. Visualize results for sample experiments
+4. Compare method performance with validation metrics
+5. Generate recommendations for which method to use in the classification pipeline
+
+Do not yet build the final classification system; focus on understanding and validating clustering detection.
+
+---
+
+Next Steps After This Exploration
+
+Once clustering detection is validated:
+- Use detected clustering as a feature for compliance classification
+- Define what cluster patterns indicate compliant vs non-compliant behavior
+- Identify anomalous clustering as deviation from expected patterns
